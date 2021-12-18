@@ -5,6 +5,18 @@
 #include <math.h>
 #include <float.h>
 #include <set>
+#include <Windows.h>
+long long milliseconds_now() {
+    static LARGE_INTEGER s_frequency;
+    static BOOL s_use_qpc = QueryPerformanceFrequency(&s_frequency);
+    if (s_use_qpc) {
+        LARGE_INTEGER now;
+        QueryPerformanceCounter(&now);
+        return (1000LL * now.QuadPart) / s_frequency.QuadPart;
+    } else {
+        return GetTickCount();
+    }
+}
 
 int Clamp(int v, int min, int max)
 {
@@ -249,7 +261,9 @@ int main(int argc, char* argv[])
 	bool dithering = true;
 
 	//img.Resize(160, 144);
+	long long start = milliseconds_now();
 	ColorRGB* palette = KMeans(img.w, img.h, img.depth, img.data, k);
+	long long elapsed = milliseconds_now() - start;
 	for(int y = 0; y < img.h; ++y)
 	{
 		for(int x = 0; x < img.w; ++x)
@@ -271,6 +285,9 @@ int main(int argc, char* argv[])
 	}
 	
 	img.Save("output.png");
+
+	printf("Done %lldms", elapsed);
+	scanf("");
 
     return 0;
 }
