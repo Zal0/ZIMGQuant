@@ -5,6 +5,8 @@
 #include <math.h>
 #include <float.h>
 #include <set>
+#include <algorithm>
+
 #include <Windows.h>
 long long milliseconds_now() {
     static LARGE_INTEGER s_frequency;
@@ -71,6 +73,11 @@ public:
 	bool operator<(const ColorRGB& other) const
 	{
 		return (R + G + B) < (other.R + other.G + other.B);
+	}
+
+	unsigned char operator[](int idx) const
+	{
+		return *(&R + idx);
 	}
 };
 
@@ -164,18 +171,119 @@ public:
 	}
 };
 
+float kdtree_dist;
+class KDTree
+{
+public:
+	ColorRGB* color;
+	Group* group;
+	
+	KDTree* left;
+	KDTree* right;
+	int d;
+
+	KDTree() {}
+	
+	void Reset(ColorRGB* color, Group* group) 
+	{
+		this->color = color;
+		this->group = group;
+		this->left = 0;
+		this->right = 0;
+		this->d = 0; 
+	}
+	
+	~KDTree()
+	{
+		delete left;
+		delete right;
+	}
+
+	KDTree* Nearest(const ColorRGB& color)
+	{
+		KDTree* nearest = 0;
+		kdtree_dist = FLT_MAX;
+		NearestR(color, nearest, kdtree_dist);
+		return nearest;
+	}
+
+	class node_cmp 
+	{
+	public:
+		size_t d;
+		node_cmp(size_t d) : d(d) {}
+
+		bool operator()(const KDTree& n1, const KDTree& n2) const {
+			return (*n1.color)[d] < (*n2.color)[d];
+		}
+        
+    };
+
+	static KDTree* Build(KDTree* kd_tree, KDTree* end, int d)
+	{
+		if(end <= kd_tree)
+			return 0;
+
+		std::nth_element(kd_tree, kd_tree + (end - kd_tree) / 2, end, node_cmp(d));
+
+		KDTree* ret =  kd_tree + (end - kd_tree) / 2;
+		ret->d = d;
+		ret->left  = Build(kd_tree, ret, (d + 1) % 3);
+		ret->right = Build(ret + 1, end, (d + 1) % 3);
+
+		return ret;
+	}
+
+private:
+	void NearestR(const ColorRGB& color, KDTree*& nearest, float& min_dist)
+	{
+		float dist = this->color->Dist(color);
+		if(dist < min_dist)
+		{
+			nearest = this;
+			min_dist = dist;
+		}
+
+		if(min_dist == 0)
+			return; 
+
+		KDTree* ordered_nodes[2];
+		float bb_dist = color[d] - (*this->color)[d];
+		if(bb_dist < 0)
+		{
+			ordered_nodes[0] = left;
+			ordered_nodes[1] = right;
+		}
+		else
+		{
+			ordered_nodes[0] = right;
+			ordered_nodes[1] = left;
+		}
+
+		if(ordered_nodes[0]) //First node is always mandatory (if this is not a leaf)
+			ordered_nodes[0]->NearestR(color, nearest, min_dist);
+		
+		if(ordered_nodes[1])
+		{
+			if((bb_dist * bb_dist) < min_dist) //Second node only required is the distance to its bounding box is less than min_dist
+				ordered_nodes[1]->NearestR(color, nearest, min_dist);
+		}
+	}
+};
+
+int find_closest_cist;
 int FindClosest(const ColorRGB color, ColorRGB* pal, int pal_size)
 {
 	//Locate the closest centroid
-	int dist = INT_MAX;
+	find_closest_cist = INT_MAX;
 	int best_k = 0;
 	for(int c = 0; c < pal_size ; ++ c)
 	{
 		int d = color.Dist(pal[c]);
-		if(d < dist)
+		if(d < find_closest_cist)
 		{
 			best_k = c;
-			dist = d;
+			find_closest_cist = d;
 		}
 	}
 	return best_k;
@@ -203,13 +311,16 @@ ColorRGB* KMeans(int w, int h, int depth, unsigned char* data, int k)
 
 	Group* groups = new Group[k];
 
-	
+	KDTree* kd_tree_nodes = new KDTree[k];
 	while(true)
 	{
 		for(int c = 0; c < k; ++c) 
 		{
 			groups[c].Clear();
+			kd_tree_nodes[c].Reset(&ret[c], &groups[c]);
 		}
+
+		KDTree* kd_tree = KDTree::Build(kd_tree_nodes, kd_tree_nodes + k, 0);
 
 		//Group pixels by their closest centroid
 		for(int y = 0; y < h; ++ y)
@@ -220,8 +331,13 @@ ColorRGB* KMeans(int w, int h, int depth, unsigned char* data, int k)
 				ColorRGB color(data[idx], data[idx + 1], data[idx + 2]);
 
 				//Locate the closest centroid
-				int best_k = FindClosest(color, ret, k);
-				groups[best_k].Add(color);
+				/*int best_k = FindClosest(color, ret, k);
+				groups[best_k].Add(color);*/
+
+				KDTree* nearest = kd_tree->Nearest(color);
+				//if(kdtree_dist != find_closest_cist) //if(nearest->color != &ret[best_k])
+				//	printf("ERROR!!");
+				nearest->group->Add(color);
 			}
 		}
 
