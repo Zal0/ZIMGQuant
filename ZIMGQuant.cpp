@@ -171,7 +171,6 @@ public:
 	}
 };
 
-float kdtree_dist;
 class KDTree
 {
 public:
@@ -202,8 +201,8 @@ public:
 	KDTree* Nearest(const ColorRGB& color)
 	{
 		KDTree* nearest = 0;
-		kdtree_dist = FLT_MAX;
-		NearestR(color, nearest, kdtree_dist);
+		int min_dist = INT_MAX;
+		NearestR(color, nearest, min_dist);
 		return nearest;
 	}
 
@@ -235,9 +234,9 @@ public:
 	}
 
 private:
-	void NearestR(const ColorRGB& color, KDTree*& nearest, float& min_dist)
+	void NearestR(const ColorRGB& color, KDTree*& nearest, int& min_dist)
 	{
-		float dist = this->color->Dist(color);
+		int dist = this->color->Dist(color);
 		if(dist < min_dist)
 		{
 			nearest = this;
@@ -248,7 +247,7 @@ private:
 			return; 
 
 		KDTree* ordered_nodes[2];
-		float bb_dist = color[d] - (*this->color)[d];
+		int bb_dist = color[d] - (*this->color)[d];
 		if(bb_dist < 0)
 		{
 			ordered_nodes[0] = left;
@@ -271,19 +270,18 @@ private:
 	}
 };
 
-int find_closest_cist;
 int FindClosest(const ColorRGB color, ColorRGB* pal, int pal_size)
 {
 	//Locate the closest centroid
-	find_closest_cist = INT_MAX;
+	int min_dist = INT_MAX;
 	int best_k = 0;
 	for(int c = 0; c < pal_size ; ++ c)
 	{
 		int d = color.Dist(pal[c]);
-		if(d < find_closest_cist)
+		if(d < min_dist)
 		{
 			best_k = c;
-			find_closest_cist = d;
+			min_dist = d;
 		}
 	}
 	return best_k;
@@ -293,12 +291,12 @@ ColorRGB* KMeans(int w, int h, int depth, unsigned char* data, int k)
 {
 	//Get k different colors in the image
 	std::set<ColorRGB> colors;
-	for(int i = 0; i < (w * h * depth) && colors.size() < k; i += depth)
+	for(int i = 0; i < (w * h * depth) && (int)colors.size() < k; i += depth)
 	{
 		colors.insert(ColorRGB(data[i], data[i + 1], data[i + 2]));
 	}
 	//Check that there are at least k colors
-	if(colors.size() < k)
+	if((int)colors.size() < k)
 		k = colors.size();
 	
 	//ret initialization
@@ -331,11 +329,11 @@ ColorRGB* KMeans(int w, int h, int depth, unsigned char* data, int k)
 				ColorRGB color(data[idx], data[idx + 1], data[idx + 2]);
 
 				//Locate the closest centroid
-				/*int best_k = FindClosest(color, ret, k);
-				groups[best_k].Add(color);*/
+				//int best_k = FindClosest(color, ret, k);
+				//groups[best_k].Add(color);
 
 				KDTree* nearest = kd_tree->Nearest(color);
-				//if(kdtree_dist != find_closest_cist) //if(nearest->color != &ret[best_k])
+				//if(color.Dist(*nearest->color) != color.Dist(ret[best_k]))
 				//	printf("ERROR!!");
 				nearest->group->Add(color);
 			}
@@ -372,8 +370,8 @@ ColorRGB* KMeans(int w, int h, int depth, unsigned char* data, int k)
 
 int main(int argc, char* argv[])
 {
-	Image img("fOcIL.png");
-	int k = 32;
+	Image img("licensed-image.jpg");
+	int k = 128;
 	bool dithering = true;
 
 	//img.Resize(160, 144);
