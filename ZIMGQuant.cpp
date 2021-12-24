@@ -6,6 +6,7 @@
 #include <float.h>
 #include <set>
 #include <algorithm>
+#include <vector>
 
 #include <Windows.h>
 long long milliseconds_now() {
@@ -368,15 +369,159 @@ ColorRGB* KMeans(int w, int h, int depth, unsigned char* data, int k)
 	return ret;
 }
 
+#define BIT(V, N) (((V) >> (N)) & 0x1)
+class OctreeNode;
+class Octree
+{
+public:
+	OctreeNode* root;
+	std::vector< OctreeNode* > nodes_by_level[8];
+	int num_leaves;
+	
+	Octree();
+	~Octree();
+	ColorRGB* GetPalette(size_t num_colors);
+};
+
+class OctreeNode
+{
+public:
+	Octree* tree;
+	Group group;
+	OctreeNode* nodes[8];
+	int level;
+
+	OctreeNode(Octree* tree, int level) : tree(tree), level(level)
+	{
+		for(int i = 0; i < 8; ++i)
+			nodes[i] = 0;
+
+		if(level >= 0 && level < 8)
+			tree->nodes_by_level[level].push_back(this);
+	}
+
+	~OctreeNode()
+	{
+		for(int i = 0; i < 8; ++i)
+			if(nodes[i]) delete nodes[i];
+	}
+
+	void Add(const ColorRGB& color, int level = 0)
+	{
+		this->group.Add(color);
+
+		if(level < 8)
+		{
+			int idx = (BIT(color.R, 7 - level) << 2) | (BIT(color.G, 7 - level) << 1) | BIT(color.B, 7 - level);
+			if(nodes[idx] == 0)
+			{
+				nodes[idx] = new OctreeNode(tree, level + 1);
+				if(level == 7)
+					tree->num_leaves ++;
+			}
+			nodes[idx]->Add(color, level + 1);
+		}
+	}
+
+	bool IsLeaf()
+	{
+		for(int i = 0; i < 8; ++i)
+		{
+			if(nodes[i])
+				return false;
+		}
+		return true;
+	}
+
+	static bool comp(OctreeNode* n0, OctreeNode* n1)
+	{
+		return n0->group.n > n1->group.n;
+	}
+};
+
+Octree::Octree() : num_leaves(0)
+{
+	root = new OctreeNode(this, 0);
+}
+
+Octree::~Octree()
+{
+	delete root;
+}
+
+ColorRGB* Octree::GetPalette(size_t num_colors)
+{
+	int current_level = 8;
+
+	while(num_leaves > num_colors)
+	{
+		if(current_level == 8 || nodes_by_level[current_level].size() == 0)
+		{
+			current_level --;
+			std::sort(nodes_by_level[current_level].begin(), nodes_by_level[current_level].end(), OctreeNode::comp);
+		}
+
+		OctreeNode* node_to_reduce = nodes_by_level[current_level].back();
+		nodes_by_level[current_level].pop_back();
+		
+		for(int i = 0; i < 8; ++ i)
+		{
+			if(node_to_reduce->nodes[i])
+			{
+				delete node_to_reduce->nodes[i];
+				node_to_reduce->nodes[i] = 0;
+				num_leaves --;
+			}
+		}
+		num_leaves ++;
+	}
+
+	ColorRGB* ret = new ColorRGB[num_leaves];
+	int c = 0;
+	for(int i = current_level - 1; i <= current_level; ++i)
+	{
+		for(std::vector< OctreeNode* >::iterator it = nodes_by_level[i].begin(); it != nodes_by_level[i].end(); ++ it)
+		{
+			for(int j = 0; j < 8; ++j)
+			{
+				if((*it)->nodes[j] && (*it)->nodes[j]->IsLeaf())
+				{
+					Group& group = (*it)->nodes[j]->group;
+					ret[c ++] = ColorRGB((unsigned char)(group.color[0] / group.n), (unsigned char)(group.color[1] / group.n), (unsigned char)(group.color[2] / group.n));
+
+					if(c > num_leaves)
+						bool error = true;
+				}
+			}
+		}
+	}
+	return ret;
+}
+
+ColorRGB* OctreePalette(const Image& image, int num_colors)
+{
+	Octree octree;
+	for(int y = 0; y < image.h; ++ y)
+	{
+		for(int x = 0; x < image.h; ++ x)
+		{
+			octree.root->Add(image.Get(x, y));
+		}
+	}
+
+	return octree.GetPalette(num_colors);
+}
+
 int main(int argc, char* argv[])
 {
 	Image img("licensed-image.jpg");
-	int k = 128;
+	int k = 32;
 	bool dithering = true;
 
 	//img.Resize(160, 144);
 	long long start = milliseconds_now();
 	ColorRGB* palette = KMeans(img.w, img.h, img.depth, img.data, k);
+	//ColorRGB* palette = OctreePalette(img, k);
 	long long elapsed = milliseconds_now() - start;
 	for(int y = 0; y < img.h; ++y)
 	{
