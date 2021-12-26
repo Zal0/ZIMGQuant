@@ -451,50 +451,69 @@ Octree::~Octree()
 
 ColorRGB* Octree::GetPalette(size_t num_colors)
 {
-	int current_level = 8;
-
-	while(num_leaves > num_colors)
+	//Locate the level where we should start reducing nodes
+	int current_level = 0;
+	while(current_level < 8 && nodes_by_level[current_level + 1].size() < num_colors)
 	{
-		if(current_level == 8 || nodes_by_level[current_level].size() == 0)
-		{
-			current_level --;
-			std::sort(nodes_by_level[current_level].begin(), nodes_by_level[current_level].end(), OctreeNode::comp);
-		}
-
-		OctreeNode* node_to_reduce = nodes_by_level[current_level].back();
-		nodes_by_level[current_level].pop_back();
-		
-		for(int i = 0; i < 8; ++ i)
-		{
-			if(node_to_reduce->nodes[i])
-			{
-				delete node_to_reduce->nodes[i];
-				node_to_reduce->nodes[i] = 0;
-				num_leaves --;
-			}
-		}
-		num_leaves ++;
+		current_level ++;
 	}
 
-	ColorRGB* ret = new ColorRGB[num_leaves];
-	int c = 0;
-	for(int i = current_level - 1; i <= current_level; ++i)
+	//Sort this level
+	std::sort(nodes_by_level[current_level].begin(), nodes_by_level[current_level].end(), OctreeNode::comp);
+
+	ColorRGB* ret = new ColorRGB[num_colors];
+	int ret_size = 0;
+
+	std::vector< OctreeNode* >& nodes = nodes_by_level[current_level];
+	std::vector< OctreeNode* > children(8);
+	for(size_t i = 0; i < nodes.size(); ++i)
 	{
-		for(std::vector< OctreeNode* >::iterator it = nodes_by_level[i].begin(); it != nodes_by_level[i].end(); ++ it)
+		OctreeNode* node = nodes[i];
+		size_t max_children = num_colors - (nodes.size() - i) - ret_size + 1;
+		if(max_children > 1)
 		{
+			//Pick the maximum amount of children on this node
+			children.clear();
 			for(int j = 0; j < 8; ++j)
 			{
-				if((*it)->nodes[j] && (*it)->nodes[j]->IsLeaf())
+				if(node->nodes[j])
 				{
-					Group& group = (*it)->nodes[j]->group;
-					ret[c ++] = ColorRGB((unsigned char)(group.color[0] / group.n), (unsigned char)(group.color[1] / group.n), (unsigned char)(group.color[2] / group.n));
-
-					if(c > num_leaves)
-						bool error = true;
+					children.push_back(node->nodes[j]);
 				}
 			}
+
+			if(children.size() > max_children)
+			{
+				//Add the nodes with less colors into the last position
+				std::sort(children.begin(), children.end(), OctreeNode::comp);
+
+				Group& group = (*(children.begin() + max_children - 1))->group;
+				for(std::vector< OctreeNode* >::iterator it = children.begin() + max_children; it != children.end(); ++ it)
+				{
+					group.color[0] += (*it)->group.color[0];
+					group.color[1] += (*it)->group.color[1];
+					group.color[2] += (*it)->group.color[2];
+					group.n += (*it)->group.n;
+				}
+
+				//Remove the colors added together
+				children.erase(children.begin() + max_children, children.end());
+			}
+
+			for(std::vector< OctreeNode* >::iterator it = children.begin(); it != children.end(); ++ it)
+			{
+				Group& group = (*it)->group;
+				ret[ret_size ++] = ColorRGB((unsigned char)(group.color[0] / group.n), (unsigned char)(group.color[1] / group.n), (unsigned char)(group.color[2] / group.n));
+			}
+		}
+		else
+		{
+			//Reduce this node (ignore children)
+			Group& group = nodes[i]->group;
+			ret[ret_size ++] = ColorRGB((unsigned char)(group.color[0] / group.n), (unsigned char)(group.color[1] / group.n), (unsigned char)(group.color[2] / group.n));
 		}
 	}
+
 	return ret;
 }
 
@@ -515,7 +534,7 @@ ColorRGB* OctreePalette(const Image& image, int num_colors)
 int main(int argc, char* argv[])
 {
 	Image img("licensed-image.jpg");
-	int k = 32;
+	int k = 8;
 	bool dithering = true;
 
 	//img.Resize(160, 144);
