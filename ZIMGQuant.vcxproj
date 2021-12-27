@@ -142,12 +142,18 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Image.cpp" />
+    <ClCompile Include="KMeans.cpp" />
+    <ClCompile Include="Octree.cpp" />
     <ClCompile Include="stb_image.c" />
     <ClCompile Include="stb_image_resize.c" />
     <ClCompile Include="stb_image_write.c" />
     <ClCompile Include="ZIMGQuant.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Image.h" />
+    <ClInclude Include="KMeans.h" />
+    <ClInclude Include="Octree.h" />
     <ClInclude Include="stb_image.h" />
     <ClInclude Include="stb_image_resize.h" />
     <ClInclude Include="stb_image_write.h" />

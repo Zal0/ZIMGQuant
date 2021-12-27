@@ -22,6 +22,15 @@
     <ClCompile Include="stb_image_resize.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Image.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="KMeans.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Octree.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stb_image.h">
@@ -31,6 +40,15 @@
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="stb_image_resize.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Image.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="KMeans.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Octree.h">
       <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>
