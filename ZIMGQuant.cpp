@@ -372,12 +372,10 @@ public:
 class OctreeNode
 {
 public:
-	Octree* tree;
 	Group group;
 	OctreeNode* nodes[8];
-	int level;
 
-	OctreeNode(Octree* tree, int level) : tree(tree), level(level)
+	OctreeNode(Octree* tree, int level)
 	{
 		for(int i = 0; i < 8; ++i)
 			nodes[i] = 0;
@@ -392,7 +390,7 @@ public:
 			if(nodes[i]) delete nodes[i];
 	}
 
-	void Add(const ColorRGB& color, int level = 0)
+	void Add(const ColorRGB& color, Octree* tree, int level = 0)
 	{
 		this->group.Add(color);
 
@@ -405,18 +403,8 @@ public:
 				if(level == 7)
 					tree->num_leaves ++;
 			}
-			nodes[idx]->Add(color, level + 1);
+			nodes[idx]->Add(color, tree, level + 1);
 		}
-	}
-
-	bool IsLeaf()
-	{
-		for(int i = 0; i < 8; ++i)
-		{
-			if(nodes[i])
-				return false;
-		}
-		return true;
 	}
 
 	static bool comp(OctreeNode* n0, OctreeNode* n1)
@@ -510,7 +498,7 @@ ColorRGB* OctreePalette(const Image& image, int num_colors)
 	{
 		for(int x = 0; x < image.h; ++ x)
 		{
-			octree.root->Add(image.Get(x, y));
+			octree.root->Add(image.Get(x, y), &octree);
 		}
 	}
 
