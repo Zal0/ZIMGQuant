@@ -15,11 +15,61 @@ long long milliseconds_now() {
     }
 }
 
+void InputError()
+{
+	printf("Usage: ZIMGQuant <image> -colors <num colors> -dithering <0 or 1> -output <output path> -method <octree or kmeans>\n");
+}
+
 int main(int argc, char* argv[])
 {
-	Image img("licensed-image.jpg");
-	int k = 32;
+	if(argc < 2)
+	{
+		InputError();
+		return -1;
+	}
+
+	int k = -1;
 	bool dithering = true;
+	char* output_path = 0;
+	
+	enum Method
+	{
+		Method_KMeans,
+		Method_Octree
+	} 
+	method = Method_KMeans;
+
+	for(int i = 2; i < argc; ++i)
+	{
+		if(!strcmp(argv[i], "-colors"))
+		{
+			k = atoi(argv[++ i]);
+		} 
+		else if(!strcmp(argv[i], "-dithering"))
+		{
+			dithering = atoi(argv[++ i]) == 0 ? false : true;
+		}
+		else if(!strcmp(argv[i], "-output"))
+		{
+			output_path = argv[++ i];
+		}
+		else if(!strcmp(argv[i], "-method"))
+		{
+			const char* method_str = argv[++ i];
+			if(!strcmp(method_str, "kmeans"))
+				method = Method_KMeans;
+			else if(!strcmp(method_str, "octree"))
+				method = Method_Octree;
+		}
+	}
+
+	if(k == -1 || !output_path)
+	{
+		InputError();
+		return -1;
+	}
+
+	Image img(argv[1]);
 
 	//img.Resize(160, 144);
 	long long start = milliseconds_now();
@@ -46,7 +96,7 @@ int main(int argc, char* argv[])
 		}
 	}
 	
-	img.Save("output.png");
+	img.Save(output_path);
 
 	printf("Done %lldms", elapsed);
 	scanf("");
