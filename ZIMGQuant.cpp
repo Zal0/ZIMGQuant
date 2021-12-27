@@ -288,25 +288,11 @@ int FindClosest(const ColorRGB color, ColorRGB* pal, int pal_size)
 	return best_k;
 }
 
-ColorRGB* KMeans(int w, int h, int depth, unsigned char* data, int k)
+ColorRGB* OctreePalette(const Image& image, int num_colors);
+ColorRGB* KMeans(const Image& img, int k)
 {
-	//Get k different colors in the image
-	std::set<ColorRGB> colors;
-	for(int i = 0; i < (w * h * depth) && (int)colors.size() < k; i += depth)
-	{
-		colors.insert(ColorRGB(data[i], data[i + 1], data[i + 2]));
-	}
-	//Check that there are at least k colors
-	if((int)colors.size() < k)
-		k = colors.size();
-	
-	//ret initialization
-	ColorRGB* ret = new ColorRGB[k];
-	int i = 0;
-	for(std::set<ColorRGB>::iterator it = colors.begin(); it != colors.end(); ++it)
-	{
-		ret[i ++] = *it;
-	}
+	//Initialize palette using octree method
+	ColorRGB* ret = OctreePalette(img, k);
 
 	Group* groups = new Group[k];
 
@@ -322,12 +308,12 @@ ColorRGB* KMeans(int w, int h, int depth, unsigned char* data, int k)
 		KDTree* kd_tree = KDTree::Build(kd_tree_nodes, kd_tree_nodes + k, 0);
 
 		//Group pixels by their closest centroid
-		for(int y = 0; y < h; ++ y)
+		for(int y = 0; y < img.h; ++ y)
 		{
-			for(int x = 0; x < w; ++ x)
+			for(int x = 0; x < img.w; ++ x)
 			{
-				int idx = (w * y + x) * depth;
-				ColorRGB color(data[idx], data[idx + 1], data[idx + 2]);
+				int idx = (img.w * y + x) * img.depth;
+				ColorRGB color(img.data[idx], img.data[idx + 1], img.data[idx + 2]);
 
 				//Locate the closest centroid
 				//int best_k = FindClosest(color, ret, k);
@@ -539,7 +525,7 @@ int main(int argc, char* argv[])
 
 	//img.Resize(160, 144);
 	long long start = milliseconds_now();
-	ColorRGB* palette = KMeans(img.w, img.h, img.depth, img.data, k);
+	ColorRGB* palette = KMeans(img, k);
 	//ColorRGB* palette = OctreePalette(img, k);
 	long long elapsed = milliseconds_now() - start;
 	for(int y = 0; y < img.h; ++y)
