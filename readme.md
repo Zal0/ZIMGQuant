@@ -11,7 +11,7 @@ This is an implementaton of Color Image Quantization using two methods
 - **octrees**: supports any number of colors, not just multiples of 8 by grouping extra colors in one node into a new color
 - **kmeans**: using octrees for centroids initialization and kd-trees for nearest neighbour search
 
-Floyd–Steinberg dithering has algo been implemented to improve the final result
+**Floyd–Steinberg dithering** has also been implemented to improve the final result
 
 Octrees method is faster but results are much better with kmeans, althought for 32 colors or more the final result is very similar
 
