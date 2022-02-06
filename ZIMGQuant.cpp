@@ -73,8 +73,7 @@ int main(int argc, char* argv[])
 
 	//img.Resize(160, 144);
 	long long start = milliseconds_now();
-	ColorRGB* palette = KMeans(img, k);
-	//ColorRGB* palette = OctreePalette(img, k);
+	ColorRGB* palette = method == Method_KMeans ? KMeans(img, k) : OctreePalette(img, k);
 	long long elapsed = milliseconds_now() - start;
 	for(int y = 0; y < img.h; ++y)
 	{
