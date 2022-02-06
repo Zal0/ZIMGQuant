@@ -24,12 +24,6 @@ public:
 		this->right = 0;
 		this->d = 0; 
 	}
-	
-	~KDTree()
-	{
-		delete left;
-		delete right;
-	}
 
 	KDTree* Nearest(const ColorRGB& color)
 	{

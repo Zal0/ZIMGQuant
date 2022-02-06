@@ -144,6 +144,8 @@ public:
 		}
 	}
 
+	void SetPalette(ColorRGB* palette, int k, bool dithering);
+
 	void Save(const char* path)
 	{
 		stbi_write_png(path, w, h, depth, data, 0);

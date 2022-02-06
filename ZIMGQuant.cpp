@@ -72,32 +72,14 @@ int main(int argc, char* argv[])
 	Image img(argv[1]);
 
 	//img.Resize(160, 144);
+
 	long long start = milliseconds_now();
 	ColorRGB* palette = method == Method_KMeans ? KMeans(img, k) : OctreePalette(img, k);
+	img.SetPalette(palette, k, dithering);
 	long long elapsed = milliseconds_now() - start;
-	for(int y = 0; y < img.h; ++y)
-	{
-		for(int x = 0; x < img.w; ++x)
-		{
-			int best_k = FindClosest(img.Get(x, y), palette, k);
+	printf("Done %lldms\n", elapsed);
 
-			//Apply dithering
-			if(dithering)
-			{
-				Vec3 quant_error = img.Get(x, y) - palette[best_k];
-				img.Add(x + 1, y    , quant_error * (7.0f / 16.0f));
-				img.Add(x - 1, y + 1, quant_error * (3.0f / 16.0f));
-				img.Add(x    , y + 1, quant_error * (5.0f / 16.0f));
-				img.Add(x + 1, y + 1, quant_error * (1.0f / 16.0f));
-			}
-
-			img.Set(x, y, palette[best_k]);
-		}
-	}
-	
 	img.Save(output_path);
-
-	printf("Done %lldms", elapsed);
 	scanf("");
 
     return 0;

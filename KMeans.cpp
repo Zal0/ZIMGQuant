@@ -7,8 +7,8 @@ ColorRGB* KMeans(const Image& img, int k)
 	ColorRGB* ret = OctreePalette(img, k);
 
 	Group* groups = new Group[k];
-
 	KDTree* kd_tree_nodes = new KDTree[k];
+
 	while(true)
 	{
 		for(int c = 0; c < k; ++c) 
@@ -63,6 +63,9 @@ ColorRGB* KMeans(const Image& img, int k)
 		if(dist == 0)
 			break;
 	}
+
+	delete[] kd_tree_nodes;
+	delete[] groups;
 
 	return ret;
 }
